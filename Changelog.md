@@ -75,6 +75,7 @@ Bugfixes:
  * References Resolver: Enforce ``storage`` as data location for mappings.
  * References Resolver: Report error instead of assertion fail when FunctionType has an undeclared type as parameter.
  * Type Checker: Consider fixed size arrays when checking for recursive structs.
+ * Type Checker: Dynamic types as key for public mappings return error instead of assertion fail.
  * Type System: Allow arbitrary exponents for literals with a mantissa of zero.
 
 ### 0.4.24 (2018-05-16)
