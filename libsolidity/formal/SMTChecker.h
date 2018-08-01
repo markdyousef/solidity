@@ -62,7 +62,9 @@ private:
 	virtual void endVisit(ExpressionStatement const& _node) override;
 	virtual void endVisit(Assignment const& _node) override;
 	virtual void endVisit(TupleExpression const& _node) override;
+	virtual bool visit(UnaryOperation const& _node) override;
 	virtual void endVisit(UnaryOperation const& _node) override;
+	virtual bool visit(BinaryOperation const& _node) override;
 	virtual void endVisit(BinaryOperation const& _node) override;
 	virtual void endVisit(FunctionCall const& _node) override;
 	virtual void endVisit(Identifier const& _node) override;

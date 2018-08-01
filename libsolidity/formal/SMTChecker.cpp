@@ -264,6 +264,14 @@ void SMTChecker::checkUnderOverflow(smt::Expression _value, IntegerType const& _
 	);
 }
 
+bool SMTChecker::visit(UnaryOperation const& _op)
+{
+	solAssert(_op.annotation().type, "");
+	if (_op.annotation().type->category() == Type::Category::RationalNumber)
+		return false;
+	return true;
+}
+
 void SMTChecker::endVisit(UnaryOperation const& _op)
 {
 	switch (_op.getOperator())
@@ -319,6 +327,14 @@ void SMTChecker::endVisit(UnaryOperation const& _op)
 			"Assertion checker does not yet implement this operator."
 		);
 	}
+}
+
+bool SMTChecker::visit(BinaryOperation const& _op)
+{
+	solAssert(_op.annotation().commonType, "");
+	if (_op.annotation().commonType->category() == Type::Category::RationalNumber)
+		return false;
+	return true;
 }
 
 void SMTChecker::endVisit(BinaryOperation const& _op)
@@ -408,48 +424,61 @@ void SMTChecker::endVisit(Literal const& _literal)
 
 void SMTChecker::arithmeticOperation(BinaryOperation const& _op)
 {
-	switch (_op.getOperator())
+	solAssert(_op.annotation().commonType, "");
+	switch (_op.annotation().commonType->category())
 	{
-	case Token::Add:
-	case Token::Sub:
-	case Token::Mul:
-	case Token::Div:
+	case Type::Category::RationalNumber:
 	{
-		solAssert(_op.annotation().commonType, "");
-		if (_op.annotation().commonType->category() != Type::Category::Integer)
+		auto const& rType = dynamic_cast<RationalNumberType const&>(*_op.annotation().commonType);
+		defineExpr(_op, rType.literalValue(nullptr));
+		break;
+	}
+	case Type::Category::Integer:
+	{
+		switch (_op.getOperator())
 		{
-			m_errorReporter.warning(
-				_op.location(),
-				"Assertion checker does not yet implement this operator on non-integer types."
+		case Token::Add:
+		case Token::Sub:
+		case Token::Mul:
+		case Token::Div:
+		{
+			auto const& intType = dynamic_cast<IntegerType const&>(*_op.annotation().commonType);
+			smt::Expression left(expr(_op.leftExpression()));
+			smt::Expression right(expr(_op.rightExpression()));
+			Token::Value op = _op.getOperator();
+			smt::Expression value(
+				op == Token::Add ? left + right :
+				op == Token::Sub ? left - right :
+				op == Token::Div ? division(left, right, intType) :
+				/*op == Token::Mul*/ left * right
 			);
+
+			if (_op.getOperator() == Token::Div)
+			{
+				checkCondition(right == 0, _op.location(), "Division by zero", "value", &right);
+				m_interface->addAssertion(right != 0);
+			}
+
+			checkUnderOverflow(value, intType, _op.location());
+
+			defineExpr(_op, value);
 			break;
 		}
-		auto const& intType = dynamic_cast<IntegerType const&>(*_op.annotation().commonType);
-		smt::Expression left(expr(_op.leftExpression()));
-		smt::Expression right(expr(_op.rightExpression()));
-		Token::Value op = _op.getOperator();
-		smt::Expression value(
-			op == Token::Add ? left + right :
-			op == Token::Sub ? left - right :
-			op == Token::Div ? division(left, right, intType) :
-			/*op == Token::Mul*/ left * right
-		);
-
-		if (_op.getOperator() == Token::Div)
+		default:
 		{
-			checkCondition(right == 0, _op.location(), "Division by zero", "value", &right);
-			m_interface->addAssertion(right != 0);
+			createExpr(_op);
+			m_errorReporter.warning(
+				_op.location(),
+				"Assertion checker does not yet implement this operator."
+			);
 		}
-
-		checkUnderOverflow(value, intType, _op.location());
-
-		defineExpr(_op, value);
+		}
 		break;
 	}
 	default:
 		m_errorReporter.warning(
 			_op.location(),
-			"Assertion checker does not yet implement this operator."
+			"Assertion checker does not yet implement this operator on this type."
 		);
 	}
 }
