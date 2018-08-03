@@ -724,20 +724,23 @@ Token::Value Scanner::scanHexString()
 	return Token::StringLiteral;
 }
 
+// Parse for regex [:digit:]+(_[:digit:]+)*
 void Scanner::scanDecimalDigits()
 {
 	// Parse for regex [:digit:]+(_[:digit:]+)*
-
+	while (isDecimalDigit(m_char) || m_char == '_')
+		addLiteralCharAndAdvance();
+#if 0
 	do
 	{
-		if (!isDecimalDigit(m_char))
+		if (!isDecimalDigit(m_char) && m_char != '_')
 			return;
 		while (isDecimalDigit(m_char))
 			addLiteralCharAndAdvance();
 
 		if (m_char == '_') 
 		{
-			advance();
+			addLiteralCharAndAdvance();
 			if (!isDecimalDigit(m_char)) // Trailing underscore. Rollback and allow next step to flag it as illegal
 			{
 				rollback(1);
@@ -745,7 +748,8 @@ void Scanner::scanDecimalDigits()
 			}
 		}
 	}
-	while (isDecimalDigit(m_char));
+	while (isDecimalDigit(m_char) || m_char == '_');
+#endif
 }
 
 Token::Value Scanner::scanNumber(char _charSeen)
@@ -756,6 +760,8 @@ Token::Value Scanner::scanNumber(char _charSeen)
 	{
 		// we have already seen a decimal point of the float
 		addLiteralChar('.');
+		if (m_char == '_')
+			return Token::Illegal;
 		scanDecimalDigits();  // we know we have at least one digit
 	}
 	else
@@ -795,6 +801,15 @@ Token::Value Scanner::scanNumber(char _charSeen)
 			scanDecimalDigits();  // optional
 			if (m_char == '.')
 			{
+				if (m_source.get(1) == '_')
+				{
+					// Found {NUMBER}\._
+					// Assume the input may be a floating point number with leading '_' in fraction part.
+					// Recover by consuming it all but returning `Illegal` right away.
+					addLiteralCharAndAdvance();
+					scanDecimalDigits();
+					return Token::Illegal;
+				}
 				// A '.' has to be followed by a number.
 				if (m_source.isPastEndOfInput() || !isDecimalDigit(m_source.get(1)))
 				{

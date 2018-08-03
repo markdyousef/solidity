@@ -155,52 +155,64 @@ BOOST_AUTO_TEST_CASE(trailing_dot)
 	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
 
-BOOST_AUTO_TEST_CASE(underscores_in_integer)
+BOOST_AUTO_TEST_CASE(underscore_integer)
 {
-	Scanner scanner(CharStream("var x = 1_23_4;"));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Var);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Identifier);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Assign);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Number);
+	Scanner scanner(CharStream("1234_5678"));
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
+	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "12345678");
+
+	scanner.reset(CharStream("1_23_4"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
 	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "1234");
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Semicolon);
+
+	scanner.reset(CharStream("1234_"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Illegal);
+	scanner.next();
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::EOS);
+}
+
+BOOST_AUTO_TEST_CASE(underscore_floats)
+{
+	Scanner scanner(CharStream("12_34.5678"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
+	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "1234.5678");
+
+	scanner.reset(CharStream("12.34_5678"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
+	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "12.345678");
+
+	scanner.reset(CharStream(".12_34"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
+	BOOST_CHECK_EQUAL(scanner.currentLiteral(), ".1234");
+	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
+
+	scanner.reset(CharStream("._1234"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Illegal);
+	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
+
+	scanner.reset(CharStream(".1234_"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Illegal);
 	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
 
 BOOST_AUTO_TEST_CASE(underscores_in_scientific_notation)
 {
-	Scanner scanner(CharStream("var x = 1_2e10;"));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Var);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Identifier);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Assign);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Number);
+	Scanner scanner(CharStream("1_2e10"));
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
 	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "12e10");
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Semicolon);
+	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
+
+	scanner.reset(CharStream("var x = 12e1_0;"), "");
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
+	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "12e10");
 	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
-
-BOOST_AUTO_TEST_CASE(underscores_in_scientific_notation_in_exp_part)
-{
-	Scanner scanner(CharStream("var x = 12e1_0;"));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Var);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Identifier);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Assign);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Number);
-	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "12e10");
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Semicolon);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
-}
-
 
 BOOST_AUTO_TEST_CASE(underscores_in_hex)
 {
-	Scanner scanner(CharStream("var x = 0xab_19cf;"));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Var);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Identifier);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Assign);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Number);
+	Scanner scanner(CharStream("0xab_19cf"));
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Number);
 	BOOST_CHECK_EQUAL(scanner.currentLiteral(), "0xab_19cf");
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Semicolon);
 	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
 
@@ -224,11 +236,9 @@ BOOST_AUTO_TEST_CASE(leading_underscore_decimal_is_identifier)
 
 BOOST_AUTO_TEST_CASE(leading_underscore_decimal_after_dot_illegal)
 {
-	Scanner scanner(CharStream("var x = 1._2;"));
-	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Var);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Identifier);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Assign);
-	BOOST_CHECK_EQUAL(scanner.next(), Token::Illegal);
+	Scanner scanner(CharStream("1._2"));
+	BOOST_CHECK_EQUAL(scanner.currentToken(), Token::Illegal);
+	BOOST_CHECK_EQUAL(scanner.next(), Token::EOS);
 }
 
 BOOST_AUTO_TEST_CASE(leading_underscore_exp_are_identifier)
