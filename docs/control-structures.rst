@@ -159,8 +159,8 @@ throws an exception or goes out of gas.
 
 .. warning::
     Any interaction with another contract imposes a potential danger, especially
-    if the source code of the contract is not known in advance. The current
-    contract hands over control to the called contract and that may potentially
+    if the source code of the contract is not known in advance. The
+    current contract hands over control to the called contract and that may potentially
     do just about anything. Even if the called contract inherits from a known parent contract,
     the inheriting contract is only required to have a correct interface. The
     implementation of the contract, however, can be completely arbitrary and thus,
