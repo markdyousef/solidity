@@ -580,9 +580,6 @@ void TypeChecker::endVisit(UsingForDirective const& _usingFor)
 
 bool TypeChecker::visit(StructDefinition const& _struct)
 {
-	if (m_scope->contractKind() == ContractDefinition::ContractKind::Interface)
-		m_errorReporter.typeError(_struct.location(), "Structs cannot be defined in interfaces.");
-
 	for (ASTPointer<VariableDeclaration> const& member: _struct.members())
 		if (!type(*member)->canBeStored())
 			m_errorReporter.typeError(member->location(), "Type cannot be used in struct.");
@@ -610,7 +607,10 @@ bool TypeChecker::visit(StructDefinition const& _struct)
 	if (CycleDetector<StructDefinition>(visitor).run(_struct) != nullptr)
 		m_errorReporter.fatalTypeError(_struct.location(), "Recursive struct definition.");
 
+	bool insideStruct = true;
+	swap(insideStruct, m_insideStruct);
 	ASTNode::listAccept(_struct.members(), *this);
+	m_insideStruct = insideStruct;
 
 	return false;
 }
@@ -694,6 +694,7 @@ bool TypeChecker::visit(VariableDeclaration const& _variable)
 	if (
 		m_scope->contractKind() == ContractDefinition::ContractKind::Interface
 		&& !_variable.isCallableParameter()
+		&& !m_insideStruct
 	)
 		m_errorReporter.typeError(_variable.location(), "Variables cannot be declared in interfaces.");
 
