@@ -75,7 +75,10 @@ void ControlFlowAnalyzer::checkUnassignedStorageReturnValues(
 	{
 		auto& unassignedAtFunctionEntry = unassigned[_functionEntry];
 		for (auto const& returnParameter: _function.returnParameterList()->parameters())
-			if (returnParameter->type()->dataStoredIn(DataLocation::Storage))
+			if (
+				returnParameter->type()->dataStoredIn(DataLocation::Storage) ||
+				returnParameter->type()->category() == Type::Category::Mapping
+			)
 				unassignedAtFunctionEntry.insert(returnParameter.get());
 	}
 
@@ -147,7 +150,9 @@ void ControlFlowAnalyzer::checkUnassignedStorageReturnValues(
 			m_errorReporter.typeError(
 				returnVal->location(),
 				ssl,
-				"This variable is of storage pointer type and might be returned without assignment and "
+				string("This variable is of ") +
+				(returnVal->type()->category() == Type::Category::Mapping ? "mapping" : "storage pointer") +
+				" type and might be returned without assignment and "
 				"could be used uninitialized. Assign the variable (potentially from itself) "
 				"to fix this error."
 			);
